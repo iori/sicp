@@ -96,3 +96,152 @@
 ; acc2
 ; gosh$ ((acc2 'withdraw) 10)
 ; 90
+
+; ex-3.1
+(define (make-accumulator balance)
+  (lambda (amount)
+    (begin (set! balance (+ balance amount))
+           balance)))
+
+(define A (make-accumulator 5))
+(define B (make-accumulator 5))
+; (print (A 10))
+; 15
+; (print (A 10))
+; 25
+; (print (B 1))
+; 6
+
+; ex-3.2
+; (define mfじゃなくてlambda使ってるけどこんな感じ
+(define (make-monitored proc)
+  (let ((counter 0))
+    (lambda (x)
+      (cond ((eq? x 'how-many-calls?) counter)
+            ((eq? x 'reset-count) (set! counter 0))
+            (else
+              (begin (set! counter (+ counter 1))
+                     (proc x)))))))
+
+; 無理やりdispatchでやってみた
+(define (make-monitored proc)
+  (let ((counter 0))
+    (define (do-proc x) (begin (set! counter (+ counter 1))
+                               (proc x)))
+    (define (return-counter x) counter)
+    (define (reset-counter x) (set! counter 0))
+
+    (define (dispatch m)
+      (cond ((eq? m 'how-many-calls?) (return-counter m))
+            ((eq? m 'reset-count) (reset-counter m))
+            (else (do-proc m))))
+    dispatch))
+
+(define s (make-monitored sqrt))
+; (print (s 100))
+; 10
+; (print (s 100))
+; 10
+; (print (s 'how-many-calls?))
+; 2
+; (print (s 'reset-count))
+; 0
+; (print (s 'how-many-calls?))
+; 0
+
+; ex-3.3
+(define (make-account balance my-password)
+  (define (withdraw amount)
+    (if (>= balance amount)
+      (begin (set! balance (- balance amount))
+             balance)
+      "Insufficient funds"))
+
+  (define (deposiot amount)
+    (set! balance (+ balance amount))
+    balance)
+
+  (define (dispatch password m)
+    (if (eq? my-password password)
+      (cond ((eq? m 'withdraw) withdraw)
+            ((eq? m 'deposit) deposiot)
+            (else (error "Unknown request -- MAKE-ACCOUNT" m)))
+      (error "Incorrect password")))
+  dispatch)
+
+; (define acc (make-account 100 'secret-password))
+;
+; (print ((acc 'secret-password 'withdraw) 40))
+; 60
+;
+; (print ((acc 'some-other-password 'deposit) 50))
+; "Incorrect password"
+
+; ex-3.3
+(define (make-account balance my-password)
+  (let ((access-counter 0))
+    (define (withdraw amount)
+      (if (>= balance amount)
+        (begin (set! balance (- balance amount))
+               balance)
+        "Insufficient funds"))
+
+    (define (deposiot amount)
+      (set! balance (+ balance amount))
+      balance)
+
+    (define (call-the-cops)
+      (error "call-the-cops"))
+
+    (define (dispatch password m)
+      (if (>= access-counter 7)
+        (call-the-cops)
+        (if (eq? my-password password)
+          (begin (set! access-counter 0)
+                 (cond ((eq? m 'withdraw) withdraw)
+                       ((eq? m 'deposit) deposiot)
+                       (else (error "Unknown request -- MAKE-ACCOUNT" m))))
+          (begin (set! access-counter (+ access-counter 1))
+                 (print "access-counter " access-counter)
+                 (error "Incorrect password")))))
+    dispatch))
+
+;;;;;;; 7回連続で失敗、8回目で`call-the-cops`
+; gosh$ (define acc (make-account 100 'pass))
+; acc
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 1
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 2
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 3
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 4
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 5
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 6
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 7
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; *** ERROR: call-the-cops
+;
+;;;;;;; 途中で成功するとcounterは0に戻る
+; gosh$ (define acc (make-account 100 'pass))
+; acc
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 1
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 2
+; *** ERROR: Incorrect password
+; gosh$ ((acc 'pass 'deposit) 50)
+; 150
+; gosh$ ((acc 'some-other-password 'deposit) 50)
+; access-counter 1
+; *** ERROR: Incorrect password
