@@ -245,3 +245,91 @@
 ; gosh$ ((acc 'some-other-password 'deposit) 50)
 ; access-counter 1
 ; *** ERROR: Incorrect password
+
+; 3.1.2 代入を取り入れた利点
+
+; randの実装
+; https://boxnos.hatenablog.com/entry/20080422/1208863688
+(define random-init 12345)
+(define (rand-update x)
+   (modulo (+ (* 214013 x) 253011) 32767))
+(define rand
+  (let ((x random-init))
+    (lambda ()
+      (set! x (rand-update x))
+      x)))
+
+; πの近似値
+; πの近似値を得るには多数回の実験を行う.
+; 各実験で二つの整数をランダムに選び、そのGCDが1かどうかのテストを行う.
+; テストが成功した回数の比率が6/π^2の推定を与え, これからπの近似を得る。
+(define (estimate-pi trials)
+  (sqrt (/ 6 (monte-carlo trials cesaro-test))))
+
+(define (cesaro-test)
+  (= (gcd (rand) (rand)) 1))
+
+(define (monte-carlo trials experiment)
+  (define (iter trials-remaining trials-passed)
+    (cond ((= trials-remaining 0)
+           (/ trials-passed trials))
+          ((experiment)
+           (iter (- trials-remaining 1) (+ trials-passed 1)))
+          (else
+            (iter (- trials-remaining 1) trials-passed))))
+  (iter trials 0))
+
+; ex-3.5
+(use srfi-27)
+(define (random-in-range low high)
+  (let ((range (- high low)))
+    (+ low (random-integer range))))
+
+(define (estimate-integral p x1 x2 y1 y2 trials)
+  (*
+    (monte-carlo trials (lambda () (p (random-in-range x1 x2) (random-in-range y1 y2))))
+    (* (- x2 x1) (- y2 y1))))
+
+; 面積と面積から算出した円周率piを表示する手続き
+(define (pi-from-monte-carlo-simulation circle-area radius)
+  ; (display circle-area)
+  ; (newline)
+  (/ circle-area radius))
+
+; 中心(5, 7) 半径3 の円の場合
+; テスト手続き
+(define (p-test x y)
+  (<= (+ (square (- x 5)) (square (- y 7))) (square 3)))
+
+; (print (pi-from-monte-carlo-simulation (estimate-integral p-test 2 8 4 10 100000.0) (square 3)))
+; 2.99488
+
+; ex-3.6
+(define rand
+  (let ((x random-init))
+    (define generate
+      (lambda ()
+        (set! x (rand-update x)) x))
+
+    (define (reset new-value)
+      (begin (set! x new-value) x))
+
+    (define (dispatch m)
+      ; (print "x " x)
+      (cond ((eq? m 'generate) (generate))
+            ((eq? m 'reset) reset)
+            (else (error "Unknown requeset -- RAND" m))))
+    dispatch))
+
+; gosh$ (rand 'generate)
+; x 12345
+; 10917
+; gosh$ (rand 'generate)
+; x 10917
+; 18162
+; gosh$ ((rand 'reset) 100)
+; x 18162
+; 100
+; gosh$ (rand 'generate)
+; x 100
+; 28091
