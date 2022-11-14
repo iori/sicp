@@ -333,3 +333,55 @@
 ; gosh$ (rand 'generate)
 ; x 100
 ; 28091
+
+; ex-3.7
+(define (make-account balance my-password)
+  (define (withdraw amount)
+    (if (>= balance amount)
+      (begin (set! balance (- balance amount))
+             balance)
+      "Insufficient funds"))
+
+  (define (deposiot amount)
+    (set! balance (+ balance amount))
+    balance)
+
+  (define (dispatch password m)
+    (if (eq? my-password password)
+      (cond ((eq? m 'withdraw) withdraw)
+            ((eq? m 'deposit) deposiot)
+            ((eq? m 'password?) #t)
+            (else (error "Unknown request -- MAKE-ACCOUNT" m)))
+      (error "Incorrect password")))
+  dispatch)
+
+(define (make-joint account account-password new-password)
+  (define (dispatch password m)
+    (if (and (account account-password 'password?) (eq? new-password password))
+      (account account-password m)
+      (error "Incorrect joint password")))
+  dispatch)
+
+(define peter-acc (make-account 100 'open-sesame))
+(define paul-acc
+ (make-joint peter-acc 'open-sesame 'rosebud))
+
+; (print (peter-acc 'open-sesame 'password?))
+; #t
+
+; (print ((peter-acc 'open-sesame 'withdraw) 40))
+; 60
+; (print ((peter-acc 'open-sesame 'deposit) 50))
+; 110
+; (print ((paul-acc 'rosebud 'withdraw) 40))
+; 70
+; (print ((paul-acc 'rosebud 'deposit) 50))
+; 120
+
+; (print ((paul-acc 'rosebuda 'deposit) 50))
+; Incorrect joint password
+; (print ((peter-acc 'rosebuda 'withdraw) 40))
+; Incorrect password
+
+; ex-3.8
+; 日本語が理解できぬ...
