@@ -385,3 +385,39 @@
 
 ; ex-3.8
 ; 日本語が理解できぬ...
+
+; ex-3.9
+;
+; 再帰版
+;             _____________________________________
+; 大域領域 -> |                                   |
+;             -------------------------------------
+;                 ↑        ↑        ↑
+;             E1→|n:3| E2→|n:2| E3→|n:1|
+;             (if (= n 1)
+;               1
+;               (* n (factorial (- n 1))))
+;             E1 ~ E1同じ↑
+;
+; 反復版
+;             _____________________________________
+; 大域領域 -> |                                   |
+;             -------------------------------------
+;              ↑
+;              E1→|n:3|
+;              (fact-iter 1 1 n)
+;                                ↑
+;                                E2→|product:1  |
+;                                   |counter:1  |
+;                                   |max-count:3|
+;                                   (fact-iter (* counter product)
+;                                              (+ counter 1)
+;                                              max-count)
+;
+; E3 product:1, counter:2, max-count:6
+; E4 product:2, counter:3, max-count:6
+; E5 product:6, counter:4, max-count:6
+; E6 product:24, counter:5, max-count:6
+; E6 product:120, counter:6, max-count:6
+; E6 product:720, counter:7, max-count:6
+
