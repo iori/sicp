@@ -124,3 +124,115 @@
 ; gosh$ w
 ; (d c b a)
 
+
+(define x (list 'a 'b))
+(define z1 (cons x x))
+(define z2 (cons (list 'a 'b) (list 'a 'b)))
+
+(define (set-to-wow! x)
+  (set-car! (car x) 'wow)
+  x)
+
+; z1
+; ((a b) a b)
+;
+; (set-to-wow! z1)
+; ((wow b) wow b)
+;
+; z2
+; ((a b) a b)
+;
+; (set-to-wow! z2)
+; ((wow b) a b)
+
+; ex-3.15
+; z1
+; z1→OO
+;    ↓↓
+;  x→OO→OO
+;    ↓  ↓
+;    a  b
+;
+; (set-to-wow! z1)
+; z1→OO
+;    ↓↓
+;  x→OO→OO
+;    ↓  ↓
+; a wow b
+;
+; z2
+; z2→OO→OO→OO
+;    |  ↓  ↓
+;    |  a  b
+;    |  ↑  ↑
+;    -→ OO→OO
+;
+; (set-to-wow! z2)
+; z2→OO→OO→OO
+;    |  ↓  ↓
+;    |  a  b
+;    |     ↑
+;    -→ OO→OO
+;       ↓
+;      wow
+
+; ex-3.16
+(define (count-pairs x)
+  (if (not (pair? x))
+    0
+    (+ (count-pairs (car x))
+       (count-pairs (cdr x))
+       1)))
+
+(define x (cons 'd (cons 'a '())))
+; x→OO→OO
+;   ↓  ↓
+;   d  a
+(set-car! x (cons 'b (cdr x)))
+;   b
+;   ↑
+;   OO--
+;   ↑  ↓
+; x→OO→OO
+;      ↓
+;      a
+(count-pairs x)
+; 4
+x
+; ((b a) a)
+
+(define x (cons 'a (cons 'b (cons 'c '()))))
+; x→OO→OO→OO
+;   ↓  ↓  ↓
+;   a  b  c
+(set-car! (cdr x) (cdr (cdr x)))
+;       ___
+;      |  ↓
+; x→OO→OO→OO
+;   ↓     ↓
+;   a  b  c
+(set-car! x (cdr x))
+;       ___
+;      |  ↓
+; x→OO→OO→OO
+;   |--↑  ↓
+;         c
+;   a  b
+;
+; ※ a,bはポインタから外れている(この図だけ見にくいので注釈)
+(count-pairs x)
+; 7
+x
+; (((c) c) (c) c)
+
+(define x (cons 'a (cons 'b (cons 'c '()))))
+(make-cycle x)
+; #0=(a b c . #0#)
+;
+;   _______
+;   ↓      |
+; x→OO→OO→OO
+;   ↓  ↓  ↓
+;   a  b  c
+; (count-pairs x)
+; 無限ループ
