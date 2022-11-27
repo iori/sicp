@@ -69,7 +69,7 @@
       y
       (let ((temp (cdr x)))
         (set-cdr! x y)
-        (print "x: " x)
+        ; (print "x: " x)
         (loop temp x))))
   (loop x '()))
 
@@ -236,3 +236,188 @@ x
 ;   a  b  c
 ; (count-pairs x)
 ; 無限ループ
+
+; ex-3.17
+(define (make-count-pairs walks)
+  (define (count-pairs x)
+    (print "walks: " walks)
+    (print "x: " x)
+    (print "memq: " (memq x walks))
+    (cond ((not (pair? x)) 0)
+          ((memq x walks) 0)
+          (else
+            (set! walks (cons x walks))
+            (print "after set! walks: " walks)
+            (+ (count-pairs (car x))
+               (count-pairs (cdr x))
+               1))))
+  count-pairs)
+
+(define CP (make-count-pairs '()))
+
+(define x (cons 'a (cons 'b (cons 'c '()))))
+; (print (CP x))
+
+(define x (cons 'd (cons 'a '())))
+(set-car! x (cons 'b (cdr x)))
+; (print (CP x))
+
+(define x (cons 'a (cons 'b (cons 'c '()))))
+(set-car! (cdr x) (cdr (cdr x)))
+(set-car! x (cdr x))
+; (print (CP x))
+
+; ex-3.18
+(define (circulate? items)
+  (define walks '())
+  (define (has-circulate? x)
+    (if (memq x walks)
+      #t
+      (begin (set! walks (cons x walks)) #f)))
+  (define (circulate?-iter i)
+    (if (not (pair? i))
+      #f
+      (if (has-circulate? (car i))
+        #t
+        (circulate?-iter (cdr i)))))
+  (circulate?-iter items))
+
+(define z (make-cycle (list 'a 'b 'c)))
+
+(print (circulate? z))
+(print (circulate? (list 'a 'b 'c)))
+(print (circulate? 'a))
+
+; ex-3.19
+; pass
+
+; ex-3.20
+(define (cons x y)
+  (define (set-x! v) (set! x v))
+  (define (set-y! v) (set! y v))
+  (define (dispatch m)
+    (cond ((eq? m 'car) x)
+          ((eq? m 'cdr) y)
+          ((eq? m 'set-car!) set-x!)
+          ((eq? m 'set-cdr!) set-y!)
+          (else (error "Undefined operation -- CONS" m))))
+  dispatch)
+
+(define (car z) (z 'car))
+(define (cdr z) (z 'cdr))
+(define (set-car! z new-value)
+  ((z 'set-car!) new-value)
+  z)
+(define (set-cdr! z new-value)
+  ((z 'set-cdr!) new-value)
+  z)
+
+; 上の手続きを使って一連の式の評価を示す環境の図を描け
+(define x (cons 1 2))
+(define z (cons x x))
+(set-car! (cdr z) 17)
+(car x)
+; 17
+
+;(define x (cons 1 2))
+; car, cdr, set-car!, set-cdrの図は省略
+;
+;             パラメタ:x y
+;             本体: (define (set-x! ...
+;             ↑
+;             OO
+;             ↓↑(cons)
+;             _____________________________________________________________________
+; 大域領域 -> |cons:
+;             |car:
+;             |cdr:
+;             |set-car!:
+;             |set-cdr!:
+;             |x:
+;             ---------------------------------------------------------------------
+;             ↓(x)                    ↑
+;             OO---------------------→E1->|x:1      |
+;                                         |y:2      |
+;             ↓                           |set-x!:  |←→OO→パラメタ:v, 本体:(set! x v)
+;             パラメタ:x,y                |set-y!:  |←→OO→パラメタ:v, 本体:(set! y v)
+;             本体: (cond ((eq? ...       |dispatch:|←→OO→パラメタ:m, 本体:(cond ...
+;
+; (define z (cons x x))
+;             _____________________________________________________________________
+; 大域領域 -> |cons:
+;             |car:
+;             |cdr:
+;             |set-car!:
+;             |set-cdr!:
+;             |x:
+;             |z:
+;             ---------------------------------------------------------------------
+;             ↓(x)                    ↑
+;             OO---------------------→E1->|x:1      |
+;                                         |y:2      |
+;             ↓                           |set-x!:  |←→OO→パラメタ:v, 本体:(set! x v)
+;             パラメタ:x,y                |set-y!:  |←→OO→パラメタ:v, 本体:(set! y v)
+;             本体: (cond ((eq? ...       |dispatch:|←→OO→パラメタ:m, 本体:(cond ...
+;
+;             ↓(大域のz)              ↑(大域)
+;             OO---------------------→E2->|x:x      |
+;                                         |y:y      |
+;             ↓                           |set-x!:  |←→OO→パラメタ:v, 本体:(set! x v)
+;             パラメタ:x,y                |set-y!:  |←→OO→パラメタ:v, 本体:(set! y v)
+;             本体: (cond ((eq? ...       |dispatch:|←→OO→パラメタ:m, 本体:(cond ...
+;
+; (set-car! (cdr z) 17)
+;             _____________________________________________________________________
+; 大域領域 -> |cons:
+;             |car:
+;             |cdr:
+;             |set-car!:
+;             |set-cdr!:
+;             |x:
+;             |z:
+;             ---------------------------------------------------------------------
+;             ↓(x)                    ↑
+;             OO---------------------→E1->|x:1      |←E4→|m: 'set-car!|(dispatch)
+;                                         |y:2      |
+;             ↓                           |set-x!:  |←E5→|v: 17|(set-x!)
+;             パラメタ:x,y                |set-y!:  |
+;             本体: (cond ((eq? ...       |dispatch:|
+;
+;             ↓(大域のz)              ↑(大域)
+;             OO---------------------→E2->|x:x      |
+;                                         |y:x      |
+;             ↓                           |set-x!:  |←→OO→パラメタ:v, 本体:(set! x v)
+;             パラメタ:x,y                |set-y!:  |←→OO→パラメタ:v, 本体:(set! y v)
+;             本体: (cond ((eq? ...       |dispatch:|←→OO→パラメタ:m, 本体:(cond ...
+;
+;                                      ↑(大域)
+;                                     E3→|z:z          |
+;                                        |new-value: 17|
+;
+; (car x)
+;             _____________________________________________________________________
+; 大域領域 -> |cons:
+;             |car:
+;             |cdr:
+;             |set-car!:
+;             |set-cdr!:
+;             |x:
+;             |z:
+;             ---------------------------------------------------------------------
+;             ↓(x)                    ↑
+;             OO---------------------→E1->|x:1      |←E4→|m: 'set-car!|(dispatch)
+;                                         |y:2      |
+;             ↓                           |set-x!:  |←E5→|v: 17|(set-x!)
+;             パラメタ:x,y                |set-y!:  |
+;             本体: (cond ((eq? ...       |dispatch:|←E6→|m: 'car|(dispatch)
+;
+;             ↓(大域のz)              ↑(大域)
+;             OO---------------------→E2->|x:x      |
+;                                         |y:x      |
+;             ↓                           |set-x!:  |←→OO→パラメタ:v, 本体:(set! x v)
+;             パラメタ:x,y                |set-y!:  |←→OO→パラメタ:v, 本体:(set! y v)
+;             本体: (cond ((eq? ...       |dispatch:|←→OO→パラメタ:m, 本体:(cond ...
+;
+;                                      ↑(大域)
+;                                     E3→|z:z          |
+;                                        |new-value: 17|
