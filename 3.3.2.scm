@@ -122,4 +122,144 @@
 (q 'print-queue)
 ((q 'delete-queue!))
 (q 'print-queue)
-((q 'delete-queue!))
+; ((q 'delete-queue!))
+
+; ex-3.23
+; このやり方は駄目なのでmake-deque2で実装する。
+; 失敗も残しておきたいので消さないでおく。
+;
+; deque->OO-----
+;        ↓     ↓
+;        OO→OO→OO
+;        ↓  ↓  ↓
+;        a  b  c
+;
+; deque->OO--------
+;        ↓        ↓
+;        OO→OO→OO→OO
+;        ↓  ↓  ↓  ↓
+;        d  a  b  c
+
+(define (make-deque) (cons '() '()))
+(define (deque-front-ptr deque) (car deque))
+(define (deque-rear-ptr deque) (cdr deque))
+(define (empty-deque? deque) (null? (deque-front-ptr deque)))
+
+(define (front-deque deque)
+  (if (empty-deque? deque)
+    (error "FRONT called with an empty deque" deque)
+    (car (deque-front-ptr deque))))
+
+(define (rear-deque deque)
+  (if (empty-deque? deque)
+    (error "REAR called with an empty deque" deque)
+    (car (deque-rear-ptr deque))))
+
+; (front-insert-deque! deque 'a)
+(define (front-insert-deque! deque item)
+  ; new-pair: (d)
+  (let ((new-pair (cons item '())))
+    (cond ((empty-deque? deque)
+           ; 最初はfront,rear共に同じitemに向ける
+           (set-front-ptr! deque new-pair)
+           (set-rear-ptr! deque new-pair)
+           deque)
+          (else
+            ; new-pairのcdrをdequeに向ける(frontへのinsert)
+            (set-cdr! new-pair (car deque))
+            ; dequeのfrontをnew-pairに向ける.
+            ; new-pairのcdrは既にdequeを向いているのでfrontにinsertした事になっている
+            (set-front-ptr! deque new-pair)
+            deque))))
+
+(define (rear-insert-deque! deque item)
+  (let ((new-pair (cons item '())))
+    (cond ((empty-deque? deque)
+           ; 最初はfront,rear共に同じitemに向ける
+           (set-front-ptr! deque new-pair)
+           (set-rear-ptr! deque new-pair)
+           deque)
+          (else
+            ; dequeのcdr(rear)のcdrをnew-pairに向ける(rearへのinsert)
+            (set-cdr! (cdr deque) new-pair)
+            ; dequeのrearをnew-pairに向ける
+            (set-rear-ptr! deque new-pair)
+            deque))))
+
+(define (front-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "DELETE! called with an empty deque" deque))
+        (else
+          ; dequeのcar(先頭)のcdr(次のitem)をdequeのcar(front)にsetする(frontのdelete)
+          (set-front-ptr! deque (cdr (car deque)))
+          deque)))
+
+(define (rear-delete-deque! deque)
+  (cond ((empty-deque? deque)
+         (error "DELETE! called with an empty deque" deque))
+        (else
+          ;(set-rear-ptr! deque (cadr (cdr deque)))
+          (set-rear-ptr! deque (cdr deque))
+          deque)))
+
+(print "************************** ex-3.23")
+(define dq (make-deque))
+; dq->OO
+;     ↓↓
+;     OO
+;     ↓
+;     a
+(front-insert-deque! dq 'a)
+(print-queue dq)
+; dq->OO--
+;     |  |
+;     ↓  ↓
+;     OO→OO
+;     ↓  ↓
+;     b  a
+(front-insert-deque! dq 'b)
+(print-queue dq)
+; dq->OO-----
+;     |     |
+;     ↓     ↓
+;     OO→OO→OO
+;     ↓  ↓  ↓
+;     c  b  a
+(front-insert-deque! dq 'c)
+(print-queue dq)
+; dq->OO--------
+;     |        |
+;     ↓        ↓
+;     OO→OO→OO→OO
+;     ↓  ↓  ↓  ↓
+;     c  b  a  d
+(rear-insert-deque! dq 'd)
+(print-queue dq)
+; dq->OO-----------
+;     |           |
+;     ↓           ↓
+;     OO→OO→OO→OO→OO
+;     ↓  ↓  ↓  ↓  ↓
+;     c  b  a  d  e
+(rear-insert-deque! dq 'e)
+(print-queue dq)
+; dq->OO-----------
+;        |        |
+;        ↓        ↓
+;     OO→OO→OO→OO→OO
+;     ↓  ↓  ↓  ↓  ↓
+;     c  b  a  d  e
+(front-delete-deque! dq)
+(print-queue dq)
+; dq->OO-----------
+;           |     |
+;           ↓     ↓
+;     OO→OO→OO→OO→OO
+;     ↓  ↓  ↓  ↓  ↓
+;     c  b  a  d  e
+(front-delete-deque! dq)
+(print-queue dq)
+; !!!!!!! このやり方だとrearの前のitemがΘ(1)ステップでわからない.
+;         違う方法が必要.
+(rear-delete-deque! dq)
+(print-queue dq)
