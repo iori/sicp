@@ -21,3 +21,39 @@
   (add-action! a1 or-action-procedure)
   (add-action! a2 or-action-procedure)
   'ok)
+
+; ex-3.29
+; A-|I|-C--|
+;         |AND|-E-|I|-out
+; B-|I|-D--|
+;   1+inverter-delay
+;          1+and-gate-delay
+;                  1+inverter-delay
+; 遅延時間はinverter-delay + inverter-delay + and-gate-delay
+(define (or-gate a b output)
+  (let ((c (make-wire))
+        (d (make-wire))
+        (e (make-wire)))
+    (inverter a c)
+    (inverter b d)
+    (and-gate c d e)
+    (inverter e output)
+    'ok))
+
+; ex-3.30
+(define (ripple-carry-adder list-a list-b list-s c)
+  (define (iter list-a list-b list-sum c-in)
+    (if (not (null? list-a))
+      (let ((c-out (make-wire)))
+        (full-adder (car list-a) (car list-b) c-in (car list-sum) c-out)
+        (iter (cdr list-a) (cdr list-b) (cdr list-sum) c-out))
+      'ok))
+  (iter list-a list-b list-sum c-out))
+
+; ex-3.31
+; after-delayを実行してthe-agendaに手続きを追加したいから。
+; after-delayが実行されないのでthe-agendaに手続きが追加されず、propagateが回らない.
+
+; ex-3.32
+; 次第書きのアクションが最後に入ったものが最初に出る（LIFO）の場合は、”回線bに登録されたアクション”、”回線aに登録されたアクション” の順で実行される。
+; この場合は出力回線 c に変化は起こらず 0 のままとなりシミュレーションが正常に実行されない。
