@@ -182,3 +182,20 @@
 (set-value! F 212 'user)
 (forget-value! C 'user)
 (set-value! F 212 'user)
+
+; ex-3.33
+(define (averager a b c)
+  (let ((u (make-connector))
+        (x (make-connector)))
+    (adder a b u)
+    (multiplier c x u)
+    (constant 2 x)
+    'ok))
+
+(define A (make-connector))
+(define B (make-connector))
+(define C (make-connector))
+(averager A B C)
+(probe "A" A)
+(probe "B" B)
+(probe "C" C)
