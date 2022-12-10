@@ -1,5 +1,15 @@
 ; 3.3.4 ディジタル回路のシミュレーター
 
+(define (probe name wire)
+  (add-action! wire
+               (lambda ()
+                 (newline)
+                 (display name)
+                 (display " ")
+                 (display (current-time the-agenda))
+                 (display "  New-value = ")
+                 (display (get-signal wire)))))
+
 ; インバーター: 入力を反転する(0->1, 1->0)
 ; アンドゲート: 2つの入力が共に1なら1. 1つでも0なら0.
 ; オアゲート:   2つの入力の内、1つでも1なら1. 両方0なら0.
