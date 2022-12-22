@@ -60,9 +60,9 @@
         (else
           (stream-filter pred (stream-cdr stream)))))
 
-(print
-  (stream-car (stream-cdr (stream-filter prime? (stream-enumerate-interval 10000 100000))))
-)
+; SICPの通りの実装だとdelayが遅延評価されない(10000 ~ 1000000のリストが出来る)
+; http://community.schemewiki.org/?sicp-ex-3.51
+;(print (stream-car (stream-cdr (stream-filter prime? (stream-enumerate-interval 10000 1000000)))))
 
 ; ex-3.50
 ; p.60のmap
@@ -74,7 +74,110 @@
 (define (stream-map proc . argstreams)
   (if (stream-null? (car argstreams))
     the-empty-stream
-    (<??>
+    (cons-stream
       (apply proc (map stream-car argstreams))
       (apply stream-map
-             (cons proc (map cdr argstreams))))))
+             (cons proc (map stream-cdr argstreams))))))
+
+; ex-3.51
+; 遅延評価されないので結果は以下
+; gosh$ (define x (stream-map show (stream-enumerate-interval 0 10)))
+;
+; 0
+; 1
+; 2
+; 3
+; 4
+; 5
+; 6
+; 7
+; 8
+; 9
+; 10x
+; gosh$ (stream-ref x 5)
+; 5
+; gosh$ (stream-ref x 7)
+; 7
+
+(define (display-line x)
+  (display x)
+  (newline))
+
+(define (show x)
+  (display-line x)
+  x)
+
+(define x (stream-map show (stream-enumerate-interval 0 10)))
+
+(define (stream-ref s n)
+  (if (= n 0)
+    (stream-car s)
+    (stream-ref (stream-cdr s) (- n 1))))
+(stream-ref x 5)
+(stream-ref x 7)
+
+; ex-3.52
+(define (stream-for-each proc s)
+  (if (stream-null? s)
+    'done
+    (begin (proc (stream-car s))
+           (stream-for-each proc (stream-cdr s)))))
+
+(define (display-stream s)
+  (stream-for-each display-line s))
+
+(print "********************************************************************* memo")
+
+(define sum 0)
+(define (accum x)
+  (set! sum (+ x sum))
+  sum)
+
+(define seq (stream-map accum (stream-enumerate-interval 1 20)))
+; gosh$ (display-stream seq)
+; 1
+; 3
+; 6
+; 10
+; 15
+; 21
+; 28
+; 36
+; 45
+; 55
+; 66
+; 78
+; 91
+; 105
+; 120
+; 136
+; 153
+; 171
+; 190
+; 210
+
+; seqの偶数だけ
+(define y (stream-filter even? seq))
+; seqの5で割り切れる数だけ
+(define z (stream-filter (lambda (x) (= (remainder x 5) 0))
+                         seq))
+; yの8番目(0start)
+(print "(stream-ref y 7): " (stream-ref y 7))
+(display-stream z)
+
+(print "********************************************************************* no memo")
+
+(define (delay exp) (lambda () exp))
+
+(define sum2 0)
+(define (accum2 x)
+  (set! sum2 (+ x sum2))
+  sum2)
+
+(define seq2 (stream-map accum2 (stream-enumerate-interval 1 20)))
+(define y2 (stream-filter even? seq2))
+(define z2 (stream-filter (lambda (x) (= (remainder x 5) 0))
+                         seq2))
+(stream-ref y2 7)
+(print "(stream-ref y2 7): " (stream-ref y2 7))
+(display-stream z2)
