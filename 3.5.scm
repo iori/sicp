@@ -1,68 +1,8 @@
-; p.60, 1.2.6
-(define (divides? a b)
-  (= (remainder b a) 0))
+(add-load-path "./packages/" :relative)
+(load "prime.scm")
+(load "delay-memo.scm")
 
-(define (find-divisor n test-divisor)
-  (cond ((> (square test-divisor) n) n)
-        ((divides? test-divisor n) test-divisor)
-        (else (find-divisor n (+ test-divisor 1)))))
-
-
-(define (smallest-divisor n)
-  (find-divisor n 2))
-
-(define (prime? n)
-  (= n (smallest-divisor n)))
-
-; 3.5
-(define the-empty-stream ())
-(define (stream-null? stream) (null? stream))
-
-(define (force delayed-object) (delayed-object))
-(define (stream-car stream) (car stream))
-(define (stream-cdr stream) (force (cdr stream)))
-
-(define (memo-proc proc)
-  (let ((already-run? #f) (result #f))
-    (lambda ()
-      (if (not already-run?)
-        (begin (set! result (proc))
-               (set! already-run? #t)
-               result)
-        result))))
-(define (delay exp) (memo-proc (lambda () exp)))
-
-(define (cons-stream a b)
-  (cons a (delay b)))
-
-(define (stream-enumerate-interval low high)
-  (if (> low high)
-    the-empty-stream
-    (cons-stream
-      low
-      (stream-enumerate-interval (+ low 1) high))))
-
-(define (stream-filter pred stream)
-  (cond ((stream-null? stream) the-empty-stream)
-        ((pred (stream-car stream))
-         (cons-stream (stream-car stream)
-                      (stream-filter pred
-                                     (stream-cdr stream))))
-        (else
-          (stream-filter pred (stream-cdr stream)))))
-
-(define (stream-filter pred stream)
-  (cond ((stream-null? stream) the-empty-stream)
-        ((pred (stream-car stream))
-         (cons-stream (stream-car stream)
-                      (stream-filter pred
-                                     (stream-cdr stream))))
-        (else
-          (stream-filter pred (stream-cdr stream)))))
-
-; SICPの通りの実装だとdelayが遅延評価されない(10000 ~ 1000000のリストが出来る)
-; http://community.schemewiki.org/?sicp-ex-3.51
-;(print (stream-car (stream-cdr (stream-filter prime? (stream-enumerate-interval 10000 1000000)))))
+(print (stream-car (stream-cdr (stream-filter prime? (stream-enumerate-interval 10000 1000000)))))
 
 ; ex-3.50
 ; p.60のmap
@@ -80,104 +20,208 @@
              (cons proc (map stream-cdr argstreams))))))
 
 ; ex-3.51
-; 遅延評価されないので結果は以下
-; gosh$ (define x (stream-map show (stream-enumerate-interval 0 10)))
-;
-; 0
-; 1
-; 2
-; 3
-; 4
-; 5
-; 6
-; 7
-; 8
-; 9
-; 10x
-; gosh$ (stream-ref x 5)
-; 5
-; gosh$ (stream-ref x 7)
-; 7
-
-(define (display-line x)
-  (display x)
-  (newline))
-
+(print "***** ex-3.51")
 (define (show x)
   (display-line x)
   x)
 
 (define x (stream-map show (stream-enumerate-interval 0 10)))
+; gosh$ (define x (stream-map show (stream-enumerate-interval 0 10)))
+; 0
+; x
 
-(define (stream-ref s n)
-  (if (= n 0)
-    (stream-car s)
-    (stream-ref (stream-cdr s) (- n 1))))
-(stream-ref x 5)
-(stream-ref x 7)
+; (stream-ref x 5)
+; gosh$  (stream-ref x 5)
+;
+; 1
+; 2
+; 3
+; 4
+; 55
+
+; (stream-ref x 7)
+; gosh$ (stream-ref x 7)
+;
+; 6
+; 77
 
 ; ex-3.52
-(define (stream-for-each proc s)
-  (if (stream-null? s)
-    'done
-    (begin (proc (stream-car s))
-           (stream-for-each proc (stream-cdr s)))))
-
-(define (display-stream s)
-  (stream-for-each display-line s))
-
-(print "********************************************************************* memo")
+(print "***** ex-3.52")
+(print "********** memo")
 
 (define sum 0)
 (define (accum x)
   (set! sum (+ x sum))
   sum)
 
+(print "sum " sum)
+; 0
+
 (define seq (stream-map accum (stream-enumerate-interval 1 20)))
-; gosh$ (display-stream seq)
+(print "sum " sum)
 ; 1
-; 3
-; 6
-; 10
-; 15
-; 21
-; 28
-; 36
-; 45
-; 55
-; 66
-; 78
-; 91
-; 105
-; 120
-; 136
-; 153
-; 171
-; 190
-; 210
 
 ; seqの偶数だけ
 (define y (stream-filter even? seq))
+(print "sum " sum)
+; 6
+
 ; seqの5で割り切れる数だけ
 (define z (stream-filter (lambda (x) (= (remainder x 5) 0))
                          seq))
+(print "sum " sum)
+; 10
+
 ; yの8番目(0start)
 (print "(stream-ref y 7): " (stream-ref y 7))
+(print "sum " sum)
+; 136
+
 (display-stream z)
+(newline)
+(print "sum " sum)
+; 210
 
-(print "********************************************************************* no memo")
-
-(define (delay exp) (lambda () exp))
+(print "********** no memo")
+(load "delay.scm")
 
 (define sum2 0)
 (define (accum2 x)
   (set! sum2 (+ x sum2))
   sum2)
+(print "sum2: " sum2)
+; 0
 
 (define seq2 (stream-map accum2 (stream-enumerate-interval 1 20)))
+(print "sum2: " sum2)
+; 1
+
 (define y2 (stream-filter even? seq2))
+(print "sum2: " sum2)
+; 6
+
 (define z2 (stream-filter (lambda (x) (= (remainder x 5) 0))
                          seq2))
+(print "sum2: " sum2)
+; 15
+
 (stream-ref y2 7)
-(print "(stream-ref y2 7): " (stream-ref y2 7))
+(print "sum2: " sum2)
+; 162
+
 (display-stream z2)
+(newline)
+(print "sum2: " sum2)
+; 362
+
+(load "delay-memo.scm")
+; ex-3.53
+; 2,4,8,16,32
+
+; ex-3.54
+(define (add-streams s1 s2)
+  (stream-map + s1 s2))
+(define (mul-streams f1 f2)
+  (stream-map * f1 f2))
+
+(define ones (cons-stream 1 ones))
+(define integers (cons-stream 1 (add-streams ones integers)))
+
+(define factorials (cons-stream 1 (mul-streams factorials (add-streams ones integers))))
+
+; gosh$ (stream-ref factorials 0)
+; 1
+; gosh$ (stream-ref factorials 1)
+; 2
+; gosh$ (stream-ref factorials 2)
+; 6
+; gosh$ (stream-ref factorials 3)
+; 24
+; gosh$ (stream-ref factorials 4)
+; 120
+
+; ex-3.55
+(define (partial-sums s)
+  (cons-stream (stream-car s)
+               (add-streams
+                 (stream-cdr s)
+                 (partial-sums s))))
+
+; gosh$ (stream-ref (partial-sums integers) 0)
+; 1
+; gosh$ (stream-ref (partial-sums integers) 1)
+; 3
+; gosh$ (stream-ref (partial-sums integers) 2)
+; 6
+; gosh$ (stream-ref (partial-sums integers) 3)
+; 10
+; gosh$ (stream-ref (partial-sums integers) 4)
+; 15
+
+; ex-3.56
+(define (merge s1 s2)
+  (cond ((stream-null? s1) s2)
+        ((stream-null? s2) s1)
+        (else
+          (let ((s1car (stream-car s1))
+                (s2car (stream-car s2)))
+            (cond ((< s1car s2car)
+                   (cons-stream s1car (merge (stream-cdr s1) s2)))
+                  ((> s1car s2car)
+                   (cons-stream s2car (merge s1 (stream-cdr s2))))
+                  (else
+                    (cons-stream s1car
+                                 (merge (stream-cdr s1)
+                                        (stream-cdr s2)))))))))
+
+(define S (cons-stream 1 (merge (scale-stream S 2)
+                                (merge (scale-stream S 3)
+                                       (scale-stream S 5)))))
+
+; gosh$ (stream-head S 10)
+; 1
+; 2
+; 3
+; 4
+; 5
+; 6
+; 8
+; 9
+; 10
+; 12
+; done
+
+; ex-3.57
+; memo: n-1
+; メモ化されていないと計算を毎回行うので指数的に増えていく
+
+; ex-3.58
+(define (expand num den radix)
+  (cons-stream
+    (quotient (* num radix) den)
+    (expand (remainder (* num radix) den) den radix)))
+
+; gosh$ (stream-head (expand 1 7 10) 10)
+; 1
+; 4
+; 2
+; 8
+; 5
+; 7
+; 1
+; 4
+; 2
+; 8
+; done
+; gosh$ (stream-head (expand 3 8 10) 10)
+; 3
+; 7
+; 5
+; 0
+; 0
+; 0
+; 0
+; 0
+; 0
+; 0
+; done
