@@ -225,3 +225,41 @@
 ; 0
 ; 0
 ; done
+
+; ex-3.59 ~ 3.62
+; skip
+
+; ex-3.63
+; (sqrt-stream x)が毎回実行されるので遅い.
+; memo化されてなければ代わりはない.
+
+; ex-3.64
+(define (average x y)
+  (/ (+ x y) 2))
+
+(define (sqrt-improve guess x)
+  (average guess (/ x guess)))
+
+(define (sqrt-stream x)
+  (define guesses
+    (cons-stream 1.0
+                 (stream-map (lambda (guess)
+                               (sqrt-improve guess x))
+                             guesses)))
+  guesses)
+
+(define (stream-limit st tolerance)
+  (let ((s1 (stream-car st))
+        (s2 (stream-car (stream-cdr st))))
+    (if (< (abs (- s1 s2)) tolerance)
+      s2
+      (stream-limit (stream-cdr st) tolerance))))
+
+(define (sqrt x tolerance)
+  (stream-limit (sqrt-stream x) tolerance))
+
+; gosh$ (sqrt 2 0.01)
+; 1.4142156862745097
+
+; ex-3.64
+; skip
