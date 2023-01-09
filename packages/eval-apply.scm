@@ -22,6 +22,25 @@
           (error
             "Unknown procedure type - - APPLY" procedure))))
 
+(define (definition-value exp)
+  (if (symbol? (cadr exp))
+    (caddr exp)
+    (make-lambda (cdadr exp)
+                 (cddr exp))))
+
+(define (definition-variable exp)
+  (if (symbol? (cadr exp))
+    (cadr exp)
+    (caadr exp)))
+
+(define (eval-definition exp env)
+  (let ((res (eval (definition-value exp) env)))
+    (define-variable! (definition-variable exp)
+                      res
+                      env)
+    ;'ok)
+    res))
+
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
@@ -73,10 +92,11 @@
 (define (assignment-variable exp) (cadr exp))
 (define (assignment-value exp) (caddr exp))
 (define (eval-assignment exp env)
-  (set-variable-value! (assignment-variable exp)
-                       (eval (assignment-value exp) env)
-                       env)
-  'ok)
+  (let ((res (eval (assignment-value exp) env)))
+    (set-variable-value! (assignment-variable exp)
+                         res
+                         env)
+    res))
 
 (define (definition? exp)
   (tagged-list? exp 'define))
@@ -163,3 +183,20 @@
     (define-variable! 'false #f initial-env)
     initial-env))
 
+(define (set-variable-value! var val env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop (enclosing-environment env)))
+            ((eq? var (car vars))
+             (set-car! vals val))
+            (else (scan (cdr vars) (cdr vals)))))
+    (if (eq? env the-empty-environment)
+      (error "Unbound variable - - SET!" var)
+      (let ((frame (first-frame env)))
+        (scan (frame-variables frame)
+              (frame-values frame)))))
+  (env-loop env))
+
+(define (compound-procedure? p)
+  (tagged-list? p 'procedure))
