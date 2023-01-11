@@ -92,4 +92,70 @@
 ; (eval expression genv)
 ; 3
 
+; ex-4.3
+; 今後使わないっぽいのでskip
+
 (load "eval-apply.scm")
+
+; ex-4.4
+
+; eval-and
+; gosh$ (and (= 1 1))
+; #t
+; gosh$ (and (= 1 2))
+; #f
+(define (and? exp) (tagged-list? exp 'and))
+(define (eval-and exp env)
+  (define (iter exp result)
+    (if (null? exp)
+      result
+      (let ((first-eval (eval (car exp) env)))
+        (if (true? first-eval)
+          (iter (cdr exp) first-eval)
+          #f))))
+  (if (null exp)
+    #t
+    (iter exp '())))
+
+; eval-or
+; gosh$ (or (= 1 1))
+; #t
+; gosh$ (or (= 1 2) (= 1 1))
+; #t
+; gosh$ (or (= 1 2) (= 1 3))
+; #f
+(define (or? exp) (tagged-list? exp 'or))
+(define (eval-or exp env)
+  (define (iter exp result)
+    (if (null? exp)
+      #f
+      (let ((first-eval (eval (car exp) env)))
+        (if (true? first-eval)
+          #t
+          (iter (cdr exp) first-eval)))))
+  (if (null exp)
+    #t
+    (iter exp '())))
+
+(define (eval exp env)
+  (cond ((self-evaluating? exp) exp)
+        ((variable? exp) (lookup-variable-value exp env))
+        ((quoted? exp) (text-of-quotation exp))
+        ((assignment? exp) (eval-assignment exp env))
+        ((definition? exp) (eval-definition exp env))
+        ((if? exp) (eval-if exp env))
+        ((and? exp) (eval-and exp env))
+        ((or? exp) (eval-or exp env))
+        ((lambda? exp)
+         (make-procedure (lambda-parameters exp)
+                         (lambda-body exp)
+                         env))
+        ((begin? exp)
+         (eval-sequence (begin-actions exp) env))
+        ((cond? exp) (eval (cond->if exp) env))
+        ((application? exp)
+         (apply (eval (operator exp) env)
+                (list-of-values (operands exp) env)))
+        (else
+          (error "Unknown expression type - - EVAL" exp))))
+
