@@ -104,7 +104,32 @@
 (define (if? exp) (tagged-list? exp 'if))
 (define (lambda? exp) (tagged-list? exp 'lambda))
 (define (begin? exp) (tagged-list? exp 'begin))
+
 (define (cond? exp) (tagged-list? exp 'cond))
+(define (cond-clauses exp) (cdr exp))
+(define (cond-else-clause? clause)
+  (eq? (cond-predicate clause) 'else))
+
+(define (cond-predicate clause) (car clause))
+
+(define (cond-actions clause) (cdr clause))
+
+(define (cond->if exp)
+  (expand-clauses (cond-clauses exp)))
+
+(define (expand-clauses clauses)
+  (if (null? clauses)
+    #f
+    (let ((first (car clauses))
+          (rest (cdr clauses)))
+      (if (cond-else-clause? first)
+        (if (null? rest)
+          (sequence->exp (cond-actions first))
+          (error "ELSE clause isn't last - - COND->IF"
+                 clauses))
+        (make-if (cond-predicate first)
+                 (sequence->exp (cond-actions first))
+                 (expand-clauses rest))))))
 
 (define (frame-variables frame) (car frame))
 (define (frame-values frame) (cdr frame))
@@ -131,7 +156,7 @@
 (define the-empty-environment '())
 
 (define (make-frame variables values)
-    (cons variables values))
+  (cons variables values))
 (define (first-frame env) (car env))
 
 (define (extend-environment vars vals base-env)
@@ -200,3 +225,43 @@
 
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
+
+(define (eval-if exp env)
+  (if (true? (eval (if-predicate exp) env))
+    (eval (if-consequent exp) env)
+    (eval (if-alternative exp) env)))
+
+(define (begin-actions exp) (cdr exp))
+
+(define (last-exp? seq) (null? (cdr seq)))
+(define (first-exp seq) (car seq))
+(define (rest-exps seq) (cdr seq))
+
+(define (make-begin seq) (cons 'begin seq))
+(define (sequence->exp seq)
+  (cond ((null? seq) seq)
+        ((last-exp? seq) (first-exp seq))
+        (else (make-begin seq))))
+
+(define (if-predicate exp) (cadr exp))
+
+(define (if-consequent exp) (caddr exp))
+
+(define (if-alternative exp)
+    (if (not (null? (cdddr exp)))
+            (cadddr exp)
+                  'false))
+
+(define (make-if predicate consequent alternative)
+    (list 'if predicate consequent alternative))
+
+(define (true? x)
+    (not (eq? x #f)))
+
+(define (false? x)
+    (eq? x #f))
+
+(define (eval-sequence exps env)
+  (cond ((last-exp? exps) (eval (first-exp exps) env))
+        (else (eval (first-exp exps) env)
+              (eval-sequence (rest-exps exps) env))))
