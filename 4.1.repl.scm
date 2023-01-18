@@ -17,22 +17,80 @@
 ; (foo 3)
 ; 11
 (define (let? exp) (tagged-list? exp 'let))
-
 (define (let-clauses exp) (cdr exp))
-
 (define (let-bindings clauses) (car clauses))
-
 (define (let-body clauses) (cdr clauses))
-
 (define (let->combination exp)
   (expand-let-clauses (let-clauses exp)))
 
+; ここでは(let)はなくなっていて、
+; let-bindingsは変数宣言部分
+; let-bodyは関数の本体
+;
+; (define (foo x) (let ((a 2) (b 5)) (+ (* x a) b)))
+; これは以下になって渡される.
+; (((a 2) (b 5)) (+ (* x a) b))
+; 最後の(cons)では
+; ((lambda (a b) (+ (* x a) b)) 2 5)
+; 以下になる。ここではmake-lambdaされているだけで実行はしない、式を作るだけ
 (define (expand-let-clauses clauses)
+  (print " >>> let-clauses: " clauses)
+  (print " >>> let-bindings: " (let-bindings clauses))
+  (print " >>> let-body: " (let-body clauses))
+
   (if (null? (let-bindings clauses))
     '()
     (cons (make-lambda (map car (let-bindings clauses)) (let-body clauses))
           (map cadr (let-bindings clauses)))))
 
+; ex-4.7
+;gosh$ (let* ((x 3) (y (+ x 2)) (z (+ x y 5))) (* x z))
+; 39
+;
+; (let* ((x 3)
+;        (y (+ x 2)) ; 5
+;        (z (+ x y 5))) ; 3 + 5 + 5 = 13
+;  (* x z)) ; 13 * 3 = 39
+(define (let*? exp) (tagged-list? exp 'let*))
+(define (let*-clauses exp) (cdr exp))
+(define (let*-bindings clauses) (car clauses))
+(define (let*-body clauses) (cadr clauses))
+(define (make-let* defs body)
+  (list 'let defs body))
+
+; (let* ((x 3) (y (+ x 2)) (z (+ x y 5))) (* x z))
+; >>> let*:bindings: ((x 3) (y (+ x 2)) (z (+ x y 5)))
+; >>> let*:body: (* x z)
+; >>> let*:rest-bindings: ((x 3) (y (+ x 2)) (z (+ x y 5)))
+; >>> let*:rest-bindings: ((y (+ x 2)) (z (+ x y 5)))
+; >>> let*:rest-bindings: ((z (+ x y 5)))
+; >>> let*:rest-bindings: ()
+; (let ((x 3)); defs
+;   ; body
+;   (let ((y (+ x 2))) ; defs
+;     ; body
+;     (let ((z (+ x y 5))) ; defs
+;       ; body
+;       (* x z))))
+(define (let*->nested-lets exp)
+  (if (null? exp)
+    #f
+    (let ((clauses (let*-clauses exp)))
+      (let ((bindings (let*-bindings clauses))
+            (body (let*-body clauses)))
+        (define (iter rest-bindings)
+          (print " >>> let*:rest-bindings: " rest-bindings)
+
+          (if (null? rest-bindings)
+            body
+            (make-let* (list (car rest-bindings))
+                       (iter (cdr rest-bindings)))))
+
+        (print " >>> let*:bindings: " bindings)
+        (print " >>> let*:body: " body)
+        (iter bindings)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (eval exp env)
   (cond ((self-evaluating? exp)
          (print " > eval:then self-evaluating? " exp)
@@ -52,6 +110,7 @@
         ((if? exp)
          (print " > eval:then if? " exp)
          (eval-if exp env))
+        ((let*? exp) (eval (let*->nested-lets exp) env))
         ((let? exp)
          (print " > eval:then let? " exp)
          (eval (let->combination exp) env))
@@ -72,14 +131,5 @@
                 (list-of-values (operands exp) env)))
         (else
           (error "Unknown expression type -- EVAL" exp))))
-
-; ex-4.7
-;gosh$ (let* ((x 3) (y (+ x 2)) (z (+ x y 5))) (* x z))
-; 39
-;
-; (let* ((x 3)
-;        (y (+ x 2)) ; 5
-;        (z (+ x y 5))) ; 3 + 5 + 5 = 13
-;  (* x z)) ; 13 * 3 = 39
 
 (driver-loop)
