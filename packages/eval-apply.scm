@@ -265,3 +265,16 @@
   (cond ((last-exp? exps) (eval (first-exp exps) env))
         (else (eval (first-exp exps) env)
               (eval-sequence (rest-exps exps) env))))
+
+(define (make-lambda parameters body)
+  (cons 'lambda (cons parameters body)))
+
+(define (lambda-parameters exp) (cadr exp))
+(define (lambda-body exp) (cddr exp))
+
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+
+(define (procedure-body p) (caddr p))
+(define (procedure-parameters p) (cadr p))
+(define (procedure-environment p) (cadddr p))
