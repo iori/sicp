@@ -135,6 +135,21 @@
             (map cadr (named-let-bindings clauses)))))) ; (+ a b) a (- count 1))
 
 ; ex-4.9
+; (begin (define x 0) (while (= x 10) (set! x (+ x 1))))
+
+(define (while->let exp env) (eval-while (cdr exp) env))
+
+(define (while? exp) (tagged-list? exp 'while))
+(define (while-predicate exp) (car exp))
+(define (while-body exp) (cadr exp))
+
+; ((= x 10) (+ x 1))
+(define (eval-while exp env)
+  (if (eval (while-predicate exp) env)
+    #t
+    (begin
+      (eval (while-body exp) env)
+      (eval-while exp env))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (eval exp env)
@@ -156,6 +171,9 @@
         ((if? exp)
          (print " > eval:then if? " exp)
          (eval-if exp env))
+        ((while? exp)
+         (print " > eval:then while? " exp)
+         (while->let exp env))
         ((let*? exp) (eval (let*->nested-lets exp) env))
         ((let? exp)
          (print " > eval:then let? " exp)
