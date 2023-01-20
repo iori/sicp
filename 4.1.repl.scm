@@ -90,6 +90,52 @@
         (print " >>> let*:body: " body)
         (iter bindings)))))
 
+; ex-4.8
+; (let ⟨var⟩ ⟨bindings⟩ ⟨body⟩)
+; (let var ((a 1)) (* a a))
+;
+; (define (fib n)
+;   (let fib-iter ((a 1)
+;                  (b 0)
+;                  (count n)) (if (= count 0)
+;                  b
+;                  (fib-iter (+ a b) a (- count 1)))))
+;
+; (define (fib n) (let fib-iter ((a 1) (b 0) (count n)) (if (= count 0) b (fib-iter (+ a b) a (- count 1)))))
+; (fib 3)
+
+(define (named-let-var clauses) (car clauses))
+(define (named-let-bindings clauses) (cadr clauses))
+(define (named-let-body clauses) (caddr clauses))
+
+(define (let->combination exp)
+  (if (pair? (car (let-clauses exp)))
+    (expand-let-clauses (let-clauses exp))
+    (expand-named-let-clauses (let-clauses exp))))
+
+; >>> let-clauses: (fib-iter ((a 1) (b 0) (count n)) (if (= count 0) b (fib-iter (+ a b) a (- count 1))))
+; >>> let-var: fib-iter
+; >>> let-bindings: fib-iter
+; >>> let-body: (((a 1) (b 0) (count n)) (if (= count 0) b (fib-iter (+ a b) a (- count 1))))
+;
+; 以下を生成する
+; (begin (define (fib-iter a b count) (if (= count 0) b (fib-iter (+ a b) a (- count 1)))) (fib-iter 1 0 n))
+(define (expand-named-let-clauses clauses)
+  (print " >>> named-let-clauses: " clauses)
+  (print " >>> named-let-var: " (named-let-var clauses))
+  (print " >>> named-let-bindings: " (let-bindings clauses))
+  (print " >>> named-let-body: " (let-body clauses))
+
+  (make-begin
+    (list
+      (list 'define (cons (named-let-var clauses) ; (fib-iter
+                          (map car (named-let-bindings clauses))) ; a b count)
+            (named-let-body clauses)) ; (if (= count 0) b (fib-iter (+ a b) a (- count 1)))
+      (cons (named-let-var clauses) ; (fib-iter
+            (map cadr (named-let-bindings clauses)))))) ; (+ a b) a (- count 1))
+
+; ex-4.9
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (eval exp env)
   (cond ((self-evaluating? exp)

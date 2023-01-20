@@ -262,7 +262,7 @@
       (let ((frame (first-frame env)))
         (scan (frame-variables frame)
               (frame-values frame)))))
-  (print " >> env: " env)
+  ;(print " >> env: " env)
   (env-loop env))
 
 (define (set-variable-value! var val env)
@@ -299,7 +299,9 @@
         (list 'null? null?)
         ;; 基本手続きが続く
         (list '+ +)
+        (list '- -)
         (list '* *)
+        (list '= =)
         ))
 
 (define (primitive-procedure-names)
