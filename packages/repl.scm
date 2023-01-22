@@ -231,6 +231,7 @@
 
 (define the-empty-environment '())
 
+#|
 (define (make-frame variables values)
   (cons variables values))
 
@@ -241,6 +242,34 @@
 (define (add-binding-to-frame! var val frame)
   (set-car! frame (cons var (car frame)))
   (set-cdr! frame (cons val (cdr frame))))
+|#
+
+; ex-4.11
+(define (make-frame variables values)
+  (define (make-frame-iter variables values)
+    (if (null? variables)
+      '()
+      (cons (cons (car variables)
+                  (car values))
+            (make-frame-iter (cdr variables)
+                             (cdr values)))))
+  (make-frame-iter variables values))
+
+(define (frame-variables frame)
+  (if (null? frame)
+    '()
+    (cons (caar frame)
+          (frame-variables (cdr frame)))))
+
+(define (frame-values frame)
+  (if (null? frame)
+    '()
+    (cons (cdar frame)
+          (frame-values (cdr frame)))))
+
+(define (add-binding-to-frame! var val frame)
+  (set-cdr! frame (cons (cons var val) (cdr frame))))
+
 
 (define (extend-environment vars vals base-env)
   (if (= (length vars) (length vals))
@@ -262,7 +291,7 @@
       (let ((frame (first-frame env)))
         (scan (frame-variables frame)
               (frame-values frame)))))
-  ;(print " >> env: " env)
+  (print " >> env: " env)
   (env-loop env))
 
 (define (set-variable-value! var val env)
