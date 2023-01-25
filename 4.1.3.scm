@@ -2,8 +2,32 @@
 (load "repl.scm")
 
 ; ex-4.11
-; repl.scmに記載
-
+; ex-4.11
+; (define (make-frame variables values)
+;   (define (make-frame-iter variables values)
+;     (if (null? variables)
+;       '()
+;       (cons (cons (car variables)
+;                   (car values))
+;             (make-frame-iter (cdr variables)
+;                              (cdr values)))))
+;   (make-frame-iter variables values))
+;
+; (define (frame-variables frame)
+;   (if (null? frame)
+;     '()
+;     (cons (caar frame)
+;           (frame-variables (cdr frame)))))
+;
+; (define (frame-values frame)
+;   (if (null? frame)
+;     '()
+;     (cons (cdar frame)
+;           (frame-values (cdr frame)))))
+;
+; (define (add-binding-to-frame! var val frame)
+;  (set-cdr! frame (cons (cons var val) (cdr frame))))
+;
 ;; defaultのenv
 ; リストのペア
 ; (
@@ -34,5 +58,78 @@
 ;  (* primitive #<subr (* :rest args)>)
 ;  (= primitive #<subr (= arg0 arg1 :rest args :optarray oarg)>)
 ; )
+
+; ex-4.12
+; (define (scan var vars vals)
+;   (cond ((null? vars) '())
+;         ((eq? var (car vars)) vals)
+;         (else (scan var (cdr vars) (cdr vals)))))
+;
+; (define (lookup-variable-value var env)
+;   (define (env-loop env)
+;     (if (eq? env the-empty-environment)
+;       (error "Unbound variable" var)
+;       (let ((frame (first-frame env)))
+;         (let ((res (scan var (frame-variables frame) (frame-values frame))))
+;           (print "res: " res)
+;           (if (null? res)
+;             (env-loop (enclosing-environment env))
+;             (car res))))))
+;   (env-loop env))
+;
+; (define (set-variable-value! var val env)
+;   (define (env-loop env)
+;     (if (eq? env the-empty-environment)
+;       (error "Unbound variable -- SET!" var)
+;       (let ((frame (first-frame env)))
+;         (let ((res (scan var (frame-variables frame) (frame-values frame))))
+;           (print "res2: " res)
+;           (if (null? res)
+;             (env-loop (enclosing-environment env))
+;             (set-car! res val))))))
+;   (env-loop env))
+;
+; (define (define-variable! var val env)
+;   (let ((frame (first-frame env)))
+;     (let ((res (scan var (frame-variables frame) (frame-values frame))))
+;       (print "res3: " res)
+;       (if (null? res)
+;         (add-binding-to-frame! var val frame)
+;         (set-car! vals val)))))
+
+; ex-4.13
+; (define (unbind? exp) (tagged-list? exp 'unbind!))
+; (define (unbinding-varialbe exp) (cadr exp))
+; (define (eval-unbinding exp env)
+;     (unbind-variable! (unbinding-varialbe exp) env)
+;       'ok)
+;
+; これだとvalsが消せない(indexとれないの...)
+; (define (unbind-variable! var env)
+;   (let ((frame (first-frame env)))
+;     (let ((vars (car frame)) (vals (cdr frame)))
+;       (set-car! frame
+;                 (remove!
+;                   (lambda (x)
+;                     (begin
+;                       (print "x: " x)
+;                       (print "var: " var)
+;                       (print "eq: " (eq? x var))
+;                       (eq? x var)))
+;                   vars)))))
+;
+; (define (unbind-variable! var env)
+;   (let ((frame (first-frame env)))
+;     (define (scan vars vals)
+;       (cond ((null? vars)
+;              (error "Unbound variabl --UNBIND-VARIABLE:" var))
+;             ((eq? var (car vars))
+;              (set-car! vars (cadr vars))
+;              (set-cdr! vars (cddr vars))
+;              (set-car! vals (cadr vals))
+;              (set-cdr! vals (cddr vals)))
+;             (else (scan (cdr vars) (cdr vals)))))
+;     (scan (frame-variables frame)
+;           (frame-values frame))))
 
 (driver-loop)
