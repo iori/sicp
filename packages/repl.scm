@@ -28,6 +28,8 @@
         ((definition? exp) (eval-definition exp env))
         ((unbind? exp) (eval-unbinding exp env))
         ((if? exp) (eval-if exp env))
+        ((let? exp) (eval (let->combination exp) env))
+        ((letrec? exp) (eval (letrec->let exp) env))
         ((lambda? exp)
          (make-procedure (lambda-parameters exp)
                          (lambda-body exp)
@@ -213,15 +215,21 @@
   (eq? x #f))
 
 ;;;; 手続きの表現
+;(define (make-procedure parameters body env)
+;  (list 'procedure parameters body env))
+; ex-4.16.b
 (define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
+  (list 'procedure parameters (scan-out-defines body) env))
 
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
 
 (define (procedure-parameters p) (cadr p))
 
-(define (procedure-body p) (caddr p))
+; (define (procedure-body p) (caddr p))
+; ex-4.16.b
+(define (procedure-body p)
+  (scan-out-defines (caddr p)))
 
 (define (procedure-environment p) (cadddr p))
 
@@ -332,12 +340,39 @@
     (if (eq? env the-empty-environment)
       (error "Unbound variable" var)
       (let ((frame (first-frame env)))
+        (print "frame: " frame)
         (let ((res (scan var (frame-variables frame) (frame-values frame))))
           (print "res: " res)
-          (if (null? res)
-            (env-loop (enclosing-environment env))
-            (car res))))))
+          (print "var: " var)
+          ; ex-4.16-a
+          (cond ((null? res) (env-loop (enclosing-environment env)))
+                ((eq? var '*unassigned*) (error "*unassigned*"))
+                (else (car res)))))))
+          ;(if (null? res)
+          ;  (env-loop (enclosing-environment env))
+          ;  (car res))))))
   (env-loop env))
+
+; ex-4.16-b
+(define (scan-out-defines body)
+  (define (iter exp vars sets exps)
+    (if (null? exp)
+      (list (reverse vars) (reverse sets) (reverse exps))
+      (if (definition? (car exp))
+        (iter (cdr exp) (cons (list (definition-variable (car exp)) ''*unassigned*) vars) (cons (list 'set! (definition-variable(car exp)) (definition-value (car exp))) sets) exps)
+        (iter (cdr exp) vars sets (cons (car exp) exps)))))
+
+  (define (include-define? exp)
+    (if (null? exp)
+      #f
+      (if (definition? (car exp))
+        #t
+        (include-define? (cdr exp)))))
+
+  (if (include-define? body)
+    (let ((var-val-exp-list (iter body '() '() '())))
+      (list (cons 'let (cons (car var-val-exp-list) (append (cadr var-val-exp-list) (caddr var-val-exp-list))))))
+    body))
 
 (define (set-variable-value! var val env)
   (define (env-loop env)
@@ -462,3 +497,41 @@
                    (procedure-body object)
                    '<procedure-env>))
     (display object)))
+
+; ex-4.6
+(define (let? exp) (tagged-list? exp 'let))
+
+(define (let-clauses exp) (cdr exp))
+
+(define (let-bindings clauses) (car clauses))
+
+(define (let-body clauses) (cdr clauses))
+
+(define (let->combination exp)
+  (expand-let-clauses (let-clauses exp)))
+
+(define (expand-let-clauses clauses)
+  (if (null? (let-bindings clauses))
+    '()
+    (cons (make-lambda (map car (let-bindings clauses)) (let-body clauses))
+          (map cadr (let-bindings clauses)))))
+
+
+; (letrec ((fact (lambda (n) (if (= n 1) 1 (* n (fact (- n 1))))))) (fact 10))
+; (letrec ((fact
+;            (lambda (n)
+;              (if (= n 1)
+;                1
+;                (* n (fact (- n 1)))))))
+;  (fact 10))
+; ex-4.20
+(define (letrec? exp) (tagged-list? exp 'letrec))
+
+(define (letrec->let exp)
+  (let ((vars (map car (cadr exp)))
+        (exps (map cdr (cadr exp)))
+        (body (cddr exp)))
+    (cons 'let
+          (cons (map (lambda (x) (list x ''*unassigned*)) vars)
+                (append (map (lambda (x y) (cons 'set! (cons x y))) vars exps)
+                        body)))))

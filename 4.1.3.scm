@@ -133,3 +133,41 @@
 ;           (frame-values frame))))
 
 (driver-loop)
+
+(define (scan-out-defines procedure-body)
+  (let ((lets '())
+        (sets '()))
+    (define (scan body)
+      (cond ((tagged-list? (car body) 'define)
+             (set! lets (cons (list (cadar body) '*unassigned) lets))
+             (set! sets (cons (cons 'set! (cdar body)) sets))
+             (scan (cdr body)))
+            (else body)))
+    (display "scan-out entered") (newline)
+    (define body (scan procedure-body))
+    (display body) (newline)
+    (cons 'let
+          (cons (reverse lets)
+                (append (reverse sets) body)))))
+
+
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+    (eq? (car exp) tag)
+    false))
+
+(define body
+  '((define even?
+      (lambda (n)
+        (if (= n 0)
+          true
+          (odd? (- n 1)))))
+    (define odd?
+      (lambda (n)
+        (if (= n 0)
+          false
+          (even? (- n 1)))))
+    (even? x)))
+
+(scan-out-defines body)
+
