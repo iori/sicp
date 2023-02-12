@@ -516,7 +516,26 @@
     (cons (make-lambda (map car (let-bindings clauses)) (let-body clauses))
           (map cadr (let-bindings clauses)))))
 
+; ex-4.8
+(define (let->combination exp)
+  (if (pair? (car (let-clauses exp)))
+      (expand-let-clauses (let-clauses exp))
+      (expand-named-let-clauses (let-clauses exp))))
 
+(define (named-let-var clauses) (car clauses))
+
+(define (named-let-bindings clauses) (cadr clauses))
+
+(define (named-let-body clauses) (caddr clauses))
+
+(define (expand-named-let-clauses clauses)
+  (make-begin
+    (list
+      (list 'define (cons (named-let-var clauses)
+                          (map car (named-let-bindings clauses)))
+            (named-let-body clauses))
+      (cons (named-let-var clauses)
+            (map cadr (named-let-bindings clauses))))))
 ; (letrec ((fact (lambda (n) (if (= n 1) 1 (* n (fact (- n 1))))))) (fact 10))
 ; (letrec ((fact
 ;            (lambda (n)
