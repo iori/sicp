@@ -127,15 +127,13 @@
                       (lambda (insts labels)
                               (let ((next-inst (car text)))
                                    (if (symbol? next-inst)
-                                       (if (assoc next-inst labels)
-                                         (error "Multiply defined label: " next-inst)
-                                         (receive insts
-                                                  (cons (make-label-entry next-inst
-                                                                          insts)
-                                                        labels)))
-                                         (receive (cons (make-instruction next-inst)
-                                                        insts)
-                                                  labels)))))))
+                                       (receive insts
+                                                (cons (make-label-entry next-inst
+                                                                        insts)
+                                                      labels))
+                                       (receive (cons (make-instruction next-inst)
+                                                      insts)
+                                                labels)))))))
 
 (define (update-insts! insts labels machine)
   (let ((pc (get-register machine 'pc))
@@ -335,12 +333,10 @@
   (let ((op (lookup-prim (operation-exp-op exp) operations))
         (aprocs
           (map (lambda (e)
-                 (if (label-exp? e)
-                   (error "Operations can be used only with registers and constants -- ASSEMBLE" e)
-                   (make-primitive-exp e machine labels)):
+                       (make-primitive-exp e machine labels))
                (operation-exp-operands exp))))
-    (lambda ()
-      (apply op (map (lambda (p) (p)) aprocs)))))
+       (lambda ()
+               (apply op (map (lambda (p) (p)) aprocs)))))
 
 (define (operation-exp? exp)
   (and (pair? exp) (tagged-list? (car exp) 'op)))
