@@ -294,6 +294,15 @@
         (list 'cdr cdr)
         (list 'cons cons)
         (list 'null? null?)
+        (list 'assoc assoc)
+        (list '+ +)
+        (list '- -)
+        (list '* *)
+        (list '/ /)
+        (list '= =)
+        (list '< <)
+        (list '> >)
+        (list 'print print)
         ;; 基本手続きが続く
         ))
 

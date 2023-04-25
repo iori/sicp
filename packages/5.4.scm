@@ -21,6 +21,8 @@
         (list 'assignment? assignment?)
         (list 'definition? definition?)
         (list 'if? if?)
+        (list 'cond? cond?)
+        (list 'cond->if cond->if)
         (list 'lambda? lambda?)
         (list 'begin? begin?)
         (list 'application? application?)
@@ -80,12 +82,15 @@
         (assign continue (label print-result))
         (goto (label eval-dispatch))
       print-result
+        (perform (op print-stack-statistics))
         (perform
           (op announce-output) (const ";;; EC-Eval value:"))
         (perform (op user-print) (reg val))
         (goto (label read-eval-print-loop))
       ;; 5.4.1 積極制御評価器の中核
       eval-dispatch
+        (test (op cond?) (reg exp))
+        (branch (label ev-cond))
         (test (op self-evaluating?) (reg exp))
         (branch (label ev-self-eval))
         (test (op variable?) (reg exp))
@@ -106,6 +111,9 @@
         (branch (label ev-application))
         (goto (label unknown-expression-type))
       ;; 5.4.1 単純式の評価
+      ev-cond
+        (assign exp (op cond->if) (reg exp))
+        (goto (label eval-dispatch))
       ev-self-eval
         (assign val (reg exp))
         (goto (reg continue))
